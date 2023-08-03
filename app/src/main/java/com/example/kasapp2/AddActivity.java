@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -14,7 +15,15 @@ import android.widget.Toast;
 
 import androidx.appcompat.widget.Toolbar;
 
+import com.androidnetworking.AndroidNetworking;
+import com.androidnetworking.common.Priority;
+import com.androidnetworking.error.ANError;
+import com.androidnetworking.interfaces.JSONArrayRequestListener;
+import com.androidnetworking.interfaces.JSONObjectRequestListener;
 import com.example.kasapp2.helper.SqliteHelper;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class AddActivity extends AppCompatActivity {
 
@@ -71,7 +80,8 @@ public class AddActivity extends AppCompatActivity {
                     Toast.makeText(getApplicationContext(), "Keterangan harus diisi", Toast.LENGTH_LONG).show();
                     keterangan.requestFocus();
                 } else {
-                    simpanData();
+//                    simpanData();
+                    insertMySql();
                 }
             }
         });
@@ -84,6 +94,32 @@ public class AddActivity extends AppCompatActivity {
             actionBar.setTitle("Tambah");
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
+    }
+
+    private void insertMySql() {
+        AndroidNetworking.get("http://192.168.18.7/kas-app-2/add.php")
+                .addQueryParameter("status", notifStatus)
+                .addQueryParameter("jumlah", jumlah.getText().toString())
+                .addQueryParameter("keterangan", keterangan.getText().toString())
+                .setPriority(Priority.LOW)
+                .build()
+                .getAsJSONObject(new JSONObjectRequestListener() {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        if (response.optString("response").equals("success")) {
+                            Toast.makeText(getApplicationContext(), "Transaksi berhasil disimpan", Toast.LENGTH_SHORT).show();
+                            finish();
+                        } else {
+                            Toast.makeText(getApplicationContext(), "Transaksi gagal disimpan", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onError(ANError anError) {
+                        Log.e("TAG", anError.getMessage());
+                        Toast.makeText(getApplicationContext(), "Error: " + anError.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     @Override

@@ -8,6 +8,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 
+import com.example.kasapp2.databinding.ActivityMainBinding;
 import com.example.kasapp2.helper.SqliteHelper;
 
 import androidx.appcompat.app.AppCompatActivity;
