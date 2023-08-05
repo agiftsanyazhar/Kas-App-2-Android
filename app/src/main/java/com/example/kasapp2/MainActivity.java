@@ -15,6 +15,7 @@ import com.androidnetworking.interfaces.JSONObjectRequestListener;
 import com.example.kasapp2.databinding.ActivityMainBinding;
 import com.example.kasapp2.helper.Config;
 import com.example.kasapp2.helper.SqliteHelper;
+import com.leavjenn.smoothdaterangepicker.date.SmoothDateRangePickerFragment;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -55,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
     SqliteHelper sqliteHelper;
     Cursor cursor;
 
-    public static String transaksi_id, status, jumlah, keterangan, tanggal, tanggal2, tgl_awal, tgl_akhir;
+    public static String URL, transaksi_id, status, jumlah, keterangan, tanggal, tanggal2, tgl_awal, tgl_akhir;
     public static boolean filter;
     String queryKas, queryPemasukan, queryPengeluaran, queryTotal;
     public static TextView textFilter;
@@ -97,6 +98,8 @@ public class MainActivity extends AppCompatActivity {
         tgl_awal = "";
         tgl_akhir = "";
 
+        URL = Config.HOST + "list.php";
+
         pemasukan = findViewById(R.id.pemasukan);
         pengeluaran = findViewById(R.id.pengeluaran);
         total = findViewById(R.id.total);
@@ -108,10 +111,14 @@ public class MainActivity extends AppCompatActivity {
         swipe_refresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                queryKas = "SELECT *, strftime('%d/%m/%Y', tanggal) FROM transaksi ORDER BY id DESC";
-                queryPemasukan = "SELECT SUM(jumlah) AS 'MASUK' FROM transaksi WHERE status='Masuk'";
-                queryPengeluaran = "SELECT SUM(jumlah) AS 'KELUAR' FROM transaksi WHERE status='Keluar'";
-                queryTotal = "SELECT SUM(jumlah) AS 'TOTAL' FROM transaksi";
+//                queryKas = "SELECT *, strftime('%d/%m/%Y', tanggal) FROM transaksi ORDER BY id DESC";
+//                queryPemasukan = "SELECT SUM(jumlah) AS 'MASUK' FROM transaksi WHERE status='Masuk'";
+//                queryPengeluaran = "SELECT SUM(jumlah) AS 'KELUAR' FROM transaksi WHERE status='Keluar'";
+//                queryTotal = "SELECT SUM(jumlah) AS 'TOTAL' FROM transaksi";
+
+                URL = Config.HOST + "list.php";
+                filter = false;
+                textFilter.setVisibility(View.GONE);
 
 //                kasAdapter();
                 selectMySql();
@@ -138,6 +145,9 @@ public class MainActivity extends AppCompatActivity {
                     " AND (tanggal >= '" + tgl_awal + "') AND (tanggal <= '" + tgl_akhir + "')";
             queryTotal = "SELECT SUM(jumlah) AS 'TOTAL' FROM transaksi " +
                     "WHERE (tanggal >= '" + tgl_awal + "') AND (tanggal <= '" + tgl_akhir + "')";
+
+            URL = Config.HOST + "filter.php?dari=" + tgl_awal + "&ke=" + tgl_akhir;
+            filter = false;
         }
 
 //        kasAdapter();
@@ -149,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
         arusKas.clear();
         listKas.setAdapter(null);
 
-        AndroidNetworking.get(Config.HOST + "list.php")
+        AndroidNetworking.get(URL)
                 .setPriority(Priority.LOW)
                 .build()
                 .getAsJSONObject(new JSONObjectRequestListener() {
@@ -210,6 +220,8 @@ public class MainActivity extends AppCompatActivity {
                 listMenu();
             }
         });
+
+        swipe_refresh.setRefreshing(false);
     }
 
     private void kasAdapter() {
@@ -385,7 +397,8 @@ public class MainActivity extends AppCompatActivity {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_filter) {
-            startActivity(new Intent(this, FilterActivity.class));
+//            startActivity(new Intent(this, FilterActivity.class));
+            filterMySql();
 
             return true;
         }
@@ -399,4 +412,36 @@ public class MainActivity extends AppCompatActivity {
 //        return NavigationUI.navigateUp(navController, appBarConfiguration)
 //                || super.onSupportNavigateUp();
 //    }
+
+    private void filterMySql() {
+        SmoothDateRangePickerFragment smoothDateRangePickerFragment = SmoothDateRangePickerFragment.newInstance(
+                new SmoothDateRangePickerFragment.OnDateRangeSetListener() {
+                    @Override
+                    public void onDateRangeSet(SmoothDateRangePickerFragment view,
+                                               int yearStart, int monthStart,
+                                               int dayStart, int yearEnd,
+                                               int monthEnd, int dayEnd) {
+                        // grab the date range, do what you want
+
+                        tgl_awal = yearStart + "-" + (monthStart + 1) + "-" + dayStart;
+                        tgl_akhir = yearEnd + "-" + (monthEnd + 1) + "-" + dayEnd;
+
+                        textFilter.setVisibility(View.VISIBLE);
+                        textFilter.setText(
+                                dayStart + "/" + (monthStart + 1) + "/" + yearStart + " - " +
+                                        dayEnd + "/" + (monthEnd + 1) + "/" + yearEnd
+                        );
+
+                        URL = Config.HOST + "filter.php";
+                        URL += "?tgl_awal=" + tgl_awal + "&tgl_akhir=" + tgl_akhir;
+                        filter = false;
+
+                        Log.e("_logURL", URL);
+
+                        selectMySql();
+                    }
+                });
+
+        smoothDateRangePickerFragment.show(getFragmentManager(), "smoothDateRangePicker");
+    }
 }
