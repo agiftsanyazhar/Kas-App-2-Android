@@ -8,6 +8,7 @@ import android.app.DatePickerDialog;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.DatePicker;
@@ -16,8 +17,15 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
 
+import com.androidnetworking.AndroidNetworking;
+import com.androidnetworking.common.Priority;
+import com.androidnetworking.error.ANError;
+import com.androidnetworking.interfaces.JSONObjectRequestListener;
+import com.example.kasapp2.helper.Config;
 import com.example.kasapp2.helper.CurrentDate;
 import com.example.kasapp2.helper.SqliteHelper;
+
+import org.json.JSONObject;
 
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
@@ -51,11 +59,11 @@ public class EditActivity extends AppCompatActivity {
         edit_tanggal = findViewById(R.id.edit_tanggal);
         simpan = findViewById(R.id.simpan);
 
-        SQLiteDatabase db = sqliteHelper.getReadableDatabase();
-        cursor = db.rawQuery("SELECT *, strftime('%d/%m/%Y %H:%M:%S', tanggal) FROM transaksi WHERE id='" + MainActivity.transaksi_id + "'", null);
-        cursor.moveToFirst();
+//        SQLiteDatabase db = sqliteHelper.getReadableDatabase();
+//        cursor = db.rawQuery("SELECT *, strftime('%d/%m/%Y %H:%M:%S', tanggal) FROM transaksi WHERE id='" + MainActivity.transaksi_id + "'", null);
+//        cursor.moveToFirst();
 
-        notifStatus = cursor.getString(1);
+        notifStatus = MainActivity.status;
         switch (notifStatus) {
             case "Masuk":
                 masuk.setChecked(true);
@@ -76,11 +84,11 @@ public class EditActivity extends AppCompatActivity {
             }
         });
 
-        jumlah.setText(cursor.getString(2));
-        keterangan.setText(cursor.getString(3));
+        jumlah.setText(MainActivity.jumlah);
+        keterangan.setText(MainActivity.keterangan);
 
-        tangal = cursor.getString(4);
-        edit_tanggal.setText(cursor.getString(5));
+        tangal = MainActivity.tanggal;
+        edit_tanggal.setText(MainActivity.tanggal2);
         edit_tanggal.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -115,7 +123,32 @@ public class EditActivity extends AppCompatActivity {
                     Toast.makeText(getApplicationContext(), "Keterangan harus diisi", Toast.LENGTH_LONG).show();
                     keterangan.requestFocus();
                 } else {
-                    simpanEdit();
+//                    simpanEdit();
+
+                    AndroidNetworking.get(Config.HOST + "update.php")
+                            .addQueryParameter("transaksi_id", MainActivity.transaksi_id)
+                            .addQueryParameter("status", notifStatus)
+                            .addQueryParameter("jumlah", jumlah.getText().toString())
+                            .addQueryParameter("keterangan", keterangan.getText().toString())
+                            .addQueryParameter("tanggal", tangal)
+                            .setPriority(Priority.LOW)
+                            .build()
+                            .getAsJSONObject(new JSONObjectRequestListener() {
+                                @Override
+                                public void onResponse(JSONObject response) {
+                                    if (response.optString("response").equals("success")) {
+                                        Toast.makeText(getApplicationContext(), "Transaksi berhasil disimpan", Toast.LENGTH_SHORT).show();
+                                        finish();
+                                    } else {
+                                        Toast.makeText(getApplicationContext(), "Transaksi gagal disimpan", Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+
+                                @Override
+                                public void onError(ANError anError) {
+                                    Toast.makeText(getApplicationContext(), "Error: " + anError.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
+                            });
                 }
             }
         });

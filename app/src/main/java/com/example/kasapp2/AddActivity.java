@@ -20,6 +20,7 @@ import com.androidnetworking.common.Priority;
 import com.androidnetworking.error.ANError;
 import com.androidnetworking.interfaces.JSONArrayRequestListener;
 import com.androidnetworking.interfaces.JSONObjectRequestListener;
+import com.example.kasapp2.helper.Config;
 import com.example.kasapp2.helper.SqliteHelper;
 
 import org.json.JSONArray;
@@ -97,7 +98,7 @@ public class AddActivity extends AppCompatActivity {
     }
 
     private void insertMySql() {
-        AndroidNetworking.get("http://192.168.18.7/kas-app-2/add.php")
+        AndroidNetworking.get(Config.HOST + "add.php")
                 .addQueryParameter("status", notifStatus)
                 .addQueryParameter("jumlah", jumlah.getText().toString())
                 .addQueryParameter("keterangan", keterangan.getText().toString())
@@ -116,7 +117,6 @@ public class AddActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(ANError anError) {
-                        Log.e("TAG", anError.getMessage());
                         Toast.makeText(getApplicationContext(), "Error: " + anError.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });

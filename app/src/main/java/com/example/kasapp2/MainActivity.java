@@ -8,11 +8,17 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 
+import com.androidnetworking.AndroidNetworking;
+import com.androidnetworking.common.Priority;
+import com.androidnetworking.error.ANError;
+import com.androidnetworking.interfaces.JSONObjectRequestListener;
 import com.example.kasapp2.databinding.ActivityMainBinding;
+import com.example.kasapp2.helper.Config;
 import com.example.kasapp2.helper.SqliteHelper;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.util.Log;
 import android.view.View;
 
 import androidx.navigation.ui.AppBarConfiguration;
@@ -26,6 +32,10 @@ import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -45,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
     SqliteHelper sqliteHelper;
     Cursor cursor;
 
-    public static String transaksi_id, tgl_awal, tgl_akhir;
+    public static String transaksi_id, status, jumlah, keterangan, tanggal, tanggal2, tgl_awal, tgl_akhir;
     public static boolean filter;
     String queryKas, queryPemasukan, queryPengeluaran, queryTotal;
     public static TextView textFilter;
@@ -78,6 +88,15 @@ public class MainActivity extends AppCompatActivity {
         listKas = findViewById(R.id.list_kas);
         swipe_refresh = findViewById(R.id.swipe_refresh);
 
+        transaksi_id = "";
+        status = "";
+        jumlah = "";
+        keterangan = "";
+        tanggal = "";
+        tanggal2 = "";
+        tgl_awal = "";
+        tgl_akhir = "";
+
         pemasukan = findViewById(R.id.pemasukan);
         pengeluaran = findViewById(R.id.pengeluaran);
         total = findViewById(R.id.total);
@@ -94,7 +113,8 @@ public class MainActivity extends AppCompatActivity {
                 queryPengeluaran = "SELECT SUM(jumlah) AS 'KELUAR' FROM transaksi WHERE status='Keluar'";
                 queryTotal = "SELECT SUM(jumlah) AS 'TOTAL' FROM transaksi";
 
-                kasAdapter();
+//                kasAdapter();
+                selectMySql();
             }
         });
     }
@@ -120,7 +140,76 @@ public class MainActivity extends AppCompatActivity {
                     "WHERE (tanggal >= '" + tgl_awal + "') AND (tanggal <= '" + tgl_akhir + "')";
         }
 
-        kasAdapter();
+//        kasAdapter();
+        selectMySql();
+    }
+
+    private void selectMySql() {
+
+        arusKas.clear();
+        listKas.setAdapter(null);
+
+        AndroidNetworking.get(Config.HOST + "list.php")
+                .setPriority(Priority.LOW)
+                .build()
+                .getAsJSONObject(new JSONObjectRequestListener() {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        NumberFormat rupiah = NumberFormat.getCurrencyInstance(Locale.GERMANY);
+
+                        pemasukan.setText(rupiah.format(response.optDouble("masuk")));
+                        pengeluaran.setText(rupiah.format(response.optDouble("keluar")));
+                        total.setText(rupiah.format(response.optDouble("saldo")));
+
+                        try {
+                            JSONArray jsonArray = response.getJSONArray("result");
+
+                            for (int i = 0; i < jsonArray.length(); i++) {
+                                JSONObject jsonObject = jsonArray.getJSONObject(i);
+
+                                HashMap<String, String> map = new HashMap<>();
+                                map.put("transaksi_id", jsonObject.optString("transaksi_id"));
+                                map.put("status", jsonObject.optString("status"));
+                                map.put("jumlah", jsonObject.optString("jumlah"));
+                                map.put("keterangan", jsonObject.optString("keterangan"));
+                                map.put("tanggal", jsonObject.optString("tanggal"));
+                                map.put("tanggal2", jsonObject.optString("tanggal2"));
+
+                                arusKas.add(map);
+                            }
+
+                            adapter();
+                        } catch (JSONException e) {
+                            Toast.makeText(getApplicationContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onError(ANError anError) {
+                        Toast.makeText(getApplicationContext(), "Error: " + anError.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void adapter() {
+        SimpleAdapter simpleAdapter = new SimpleAdapter(this, arusKas, R.layout.list_kas,
+                new String[]{"transaksi_id", "status", "jumlah", "keterangan", "tanggal", "tanggal2"},
+                new int[]{R.id.id, R.id.text_status, R.id.jumlah, R.id.keterangan, R.id.tanggal, R.id.tanggal2});
+
+        listKas.setAdapter(simpleAdapter);
+        listKas.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                transaksi_id = ((TextView) view.findViewById(R.id.id)).getText().toString();
+                status = ((TextView) view.findViewById(R.id.text_status)).getText().toString();
+                jumlah = ((TextView) view.findViewById(R.id.jumlah)).getText().toString();
+                keterangan = ((TextView) view.findViewById(R.id.keterangan)).getText().toString();
+                tanggal = ((TextView) view.findViewById(R.id.tanggal)).getText().toString();
+                tanggal2 = ((TextView) view.findViewById(R.id.tanggal2)).getText().toString();
+
+                listMenu();
+            }
+        });
     }
 
     private void kasAdapter() {
@@ -223,7 +312,28 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 dialog.dismiss();
 
-                hapus();
+                AndroidNetworking.get(Config.HOST + "delete.php")
+                        .addQueryParameter("transaksi_id", transaksi_id)
+                        .setPriority(Priority.LOW)
+                        .build()
+                        .getAsJSONObject(new JSONObjectRequestListener() {
+                            @Override
+                            public void onResponse(JSONObject response) {
+                                if (response.optString("response").equals("success")) {
+                                    Toast.makeText(getApplicationContext(), "Transaksi berhasil disimpan", Toast.LENGTH_SHORT).show();
+                                    selectMySql();
+                                } else {
+                                    Toast.makeText(getApplicationContext(), "Transaksi gagal disimpan", Toast.LENGTH_SHORT).show();
+                                }
+                            }
+
+                            @Override
+                            public void onError(ANError anError) {
+                                Toast.makeText(getApplicationContext(), "Error: " + anError.getMessage(), Toast.LENGTH_SHORT).show();
+                            }
+                        });
+
+//                hapus();
             }
         });
 
