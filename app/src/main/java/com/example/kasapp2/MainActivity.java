@@ -79,7 +79,8 @@ public class MainActivity extends AppCompatActivity {
         binding.fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this, AddActivity.class));
+//                startActivity(new Intent(MainActivity.this, AddActivity.class));
+                startActivity(new Intent(MainActivity.this, TabActivity.class));
 //                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
 //                        .setAnchorView(R.id.fab)
 //                        .setAction("Action", null).show();
